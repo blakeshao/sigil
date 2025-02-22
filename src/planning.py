@@ -1,58 +1,74 @@
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import BaseMessage
+from langchain_openai import ChatOpenAI
 from typing import List
 import json
 from prompts import PLANNING_PROMPT
-from langchain_core.agents import create_react_agent
+from dotenv import load_dotenv
+from schema import Plan, Step
+import os
+from datetime import datetime
+from langchain.agents import create_react_agent
+from langchain.tools import Tool
+from langchain.prompts import ChatPromptTemplate
+load_dotenv()
 
-def planning(state):
+
+def run_planning(state):
     """Planning agent that creates a collage plan based on input images."""
     # Initialize chat model
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    llm = ChatOpenAI(model="gpt-4o", temperature=1.0)
     
-    # Create prompt template
-    prompt = ChatPromptTemplate.from_template(PLANNING_PROMPT)
+    # Create messages list with system prompt and images
+    messages = [{
+        "role": "system",
+        "content": PLANNING_PROMPT
+    }]
     
-    # Format messages
-    messages = prompt.format_messages()
-    agent = create_react_agent(llm, prompt)
-
-    # Convert images to base64 strings for the LLM
-    image_messages = []
-    for i, image in enumerate(state["images"]):
-        image_messages.append({
+    # Add images to messages
+    for image_id, image in state["images"].items():
+        messages.append({
             "role": "user",
             "content": [
                 {
-                    "type": "image",
-                    "image_bytes": image
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{image.base64}"
+                    }
                 },
                 {
-                    "type": "text", 
-                    "text": f"Image {i+1}"
+                    "type": "text",
+                    "text": f"Image dimensions: {image.dimensions}"
+                },
+                {
+                    "type": "text",
+                    "text": f"Image id: {image_id}"
                 }
             ]
         })
-    
-    # Add image messages to the prompt messages
-    messages.extend(image_messages)
 
-    response = agent.invoke({"messages": messages})
-    
+    # Get response from LLM
+    response = llm.invoke(messages)
+    print(response.content)
     
     try:
+        # Clean the response - remove any potential markdown or extra text
+        content = response.content.strip()
+        if content.startswith("```json"):
+            content = content.split("```json")[1]
+        if content.endswith("```"):
+            content = content.rsplit("```", 1)[0]
+            
         # Parse the JSON response
-        plan = json.loads(response.content)
+        plan_data = json.loads(content.strip())
         
-        # Update state with plan
-        state["theme"] = plan["theme"]
-        state["plan"] = plan["plan"]
+        # Create Plan object with proper Step objects
+        steps = [Step(step=s["step"], image_id=s["image_id"]) for s in plan_data["plan"]]
+        state["plan"] = Plan(theme=plan_data["theme"], steps=steps)
         state["current_step_index"] = 0
         
-    except json.JSONDecodeError:
-        # Handle invalid JSON response
-        state["error"] = "Failed to parse planning response"
+    except json.JSONDecodeError as e:
+        print("Failed to parse response:", content)
+        raise ValueError(f"Failed to parse agent response as JSON: {e}")
         
     return state
+
 
