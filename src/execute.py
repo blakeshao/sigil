@@ -22,22 +22,22 @@ def run_execute(state):
     tools = [
         Tool(
             name="add_layer",
-            func=lambda x, **kwargs: canvas.add_layer(**json.loads(x)),
+            func=lambda x, **kwargs: canvas.add_layer(**(json.loads(x[x.find('{'): x.rfind('}')+1]) if '{' in x else json.loads(x))),
             description="Add an image layer to the canvas at specified coordinates"
         ),
         Tool(
             name="move_layer", 
-            func=lambda x, **kwargs: canvas.move_layer(**json.loads(x)),
+            func=lambda x, **kwargs: canvas.move_layer(**(json.loads(x[x.find('{'): x.rfind('}')+1]) if '{' in x else json.loads(x))),
             description="Move a layer to new coordinates"
         ),
         Tool(
             name="scale_layer",
-            func=lambda x, **kwargs: canvas.scale_layer(**json.loads(x)), 
+            func=lambda x, **kwargs: canvas.scale_layer(**(json.loads(x[x.find('{'): x.rfind('}')+1]) if '{' in x else json.loads(x))),
             description="Scale a layer by x and y factors"
         ),
         Tool(
             name="rotate_layer",
-            func=lambda x, **kwargs: canvas.rotate_layer(**json.loads(x)),
+            func=lambda x, **kwargs: canvas.rotate_layer(**(json.loads(x[x.find('{'): x.rfind('}')+1]) if '{' in x else json.loads(x))),
             description="Rotate a layer by specified angle"
         ),
         Tool(
@@ -56,7 +56,8 @@ def run_execute(state):
         agent=agent, 
         tools=tools,
         handle_parsing_errors=True,
-        max_iterations=5
+        max_iterations=5,
+        verbose=True
     )
 
     # Get current step from plan

@@ -41,6 +41,5 @@ def determine_end_condition(state):
     ]
     
     response = llm.invoke(messages)
-    print(response.content)
     return response.content
 

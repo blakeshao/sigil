@@ -28,20 +28,23 @@ workflow = StateGraph(AgentState)
 
 def plan(state: AgentState) -> AgentState:
     # Example processing step
+    print("Planning...")
     state = run_planning(state)
     return state
 
 # Define nodes/steps that will be added to the graph
 def execute(state: AgentState) -> AgentState:
     # Example processing step
+    print("Executing...")
     state = run_execute(state)
     return state
 
 
 ## TODO: Add more fine-grained end conditions
 def end_condition(state: AgentState) -> str:
-    end_condition = determine_end_condition(state)
-    return end_condition
+    if state["current_step_index"] == len(state["plan"].steps):
+        return "END"
+    return "NOT_END"
 
 # Add nodes to the graph
 workflow.add_node("execution_node", execute)
@@ -67,6 +70,7 @@ def run_workflow(images: list[Img], messages: list[str]) -> Dict:
     """
     Run the workflow with initial messages
     """
+    result = None  # Initialize result to None
     try:
         initial_state = {
             "images": images,
@@ -74,8 +78,8 @@ def run_workflow(images: list[Img], messages: list[str]) -> Dict:
             "current_step": "plan",
             "tool_output": None,
             "tools_output": None,
-        "canvas": Canvas(images),
-        "plan": None,
+            "canvas": Canvas(images),
+            "plan": None,
             "current_step_index": 0
         }
         result = app.invoke(initial_state, config={"recursion_limit": 100})
@@ -83,16 +87,21 @@ def run_workflow(images: list[Img], messages: list[str]) -> Dict:
         print(f"Error: {e}")
         # Create results directory if it doesn't exist
         os.makedirs("results", exist_ok=True)
-        if result["canvas"] is not None:
+        if result and result.get("canvas") is not None:  # Check if result exists and has canvas
             result["canvas"].canvas.save("output_at_limit.png")
         raise
         
     # Save the final canvas
-    result["canvas"].canvas.save("results/final_collage.png")
+    if result and result.get("canvas") is not None:  # Add safety check here too
+        result["canvas"].canvas.save("results/final_collage.png")
     return result
 
 def main():
-    images = {"1": convert_png_to_img("img/1.png"), "2": convert_png_to_img("img/2.png")}
+    images = {}
+    for file in os.listdir("img"):
+        if file.endswith(".png"):
+            image_id = file.split(".")[0]
+            images[image_id] = convert_png_to_img(f"img/{file}")
     messages = []
     run_workflow(images, messages)
 

@@ -125,8 +125,8 @@ def main():
     canvas.move_layer(1, 200, 200)
     canvas.add_layer("1", 0, 0)
     canvas.scale_layer(1, 0.5, 0.5)
-    # canvas.rotate_layer(1, 45)
-    # canvas.inspect_canvas()
+    canvas.rotate_layer(1, 45)
+    canvas.rotate_layer(2, 45)    # canvas.inspect_canvas()
     canvas.canvas.show()
 
 if __name__ == "__main__":
