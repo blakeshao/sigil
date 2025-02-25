@@ -49,8 +49,8 @@ def scale_to_fit(image: Image.Image) -> Image.Image:
     # Get current dimensions
     width, height = image.size
     print(f"Current dimensions: {width}x{height}")
-    if width < IMAGE_WIDTH or height < IMAGE_HEIGHT:
-        return image
+    # if width < IMAGE_WIDTH or height < IMAGE_HEIGHT:
+    #     return image
     
     # Calculate scaling ratios
     width_ratio = (float)(float(IMAGE_WIDTH) / float(width))

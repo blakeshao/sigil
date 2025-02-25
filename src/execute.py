@@ -6,6 +6,7 @@ from prompts import EXECUTION_PROMPT
 from agent_canvas import Canvas
 from dotenv import load_dotenv
 import json
+from constants import IMAGE_WIDTH, IMAGE_HEIGHT
 load_dotenv()
 
 def run_execute(state):
@@ -72,8 +73,12 @@ def run_execute(state):
         "image_id": current_step.image_id,
         "agent_scratchpad": "",
         "tools": str(tools),
-        "tool_names": ", ".join(t.name for t in tools)
+        "tool_names": ", ".join(t.name for t in tools),
+        "layer_id": state["canvas"].current_layer_id,
+        "canvas_width": IMAGE_WIDTH,
+        "canvas_height": IMAGE_HEIGHT
     })
+
     
     # Increment step index
     state["current_step_index"] += 1

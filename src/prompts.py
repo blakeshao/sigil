@@ -26,6 +26,7 @@ Remember:
 - The canvas is {IMAGE_WIDTH}x{IMAGE_HEIGHT}
 - All the steps must be executed on one specific image, not on the entire canvas.
 - You can use the same image multiple times in the collage.
+- Order the steps in the order of the layer from bottom to top. Start with the lowest layer.
 - Be bold and experimental with the available tools, BUT ONLY USE THE TOOLS AVAILABLE TO YOU:
   - add_layer(image: Image.Image, x: int, y: int)
   - move_layer(layer_id: int, x: int, y: int)
@@ -67,14 +68,14 @@ Action Input: {{}} (DO NOT INCLUDE ANYTHING ELSE OTHER THAN THE JSON)
 
 Current step: {input}
 Image ID to use: {image_id}
-
+Layer ID to use: {layer_id}
 Follow these steps:
 1. Read the step description and image ID
 2. Use the appropriate tool(s) to execute the step. Make sure to include ALL required parameters:
    - add_layer requires: img_id (as string), x, y
-   - move_layer requires: layer_id, x, y
-   - scale_layer requires: layer_id, scale_x, scale_y
-   - rotate_layer requires: layer_id, angle
+   - move_layer requires: layer_id (as string), x, y
+   - scale_layer requires: layer_id (as string), scale_x, scale_y
+   - rotate_layer requires: layer_id (as string), angle
 3. Always end with inspect_canvas to verify your work
 4. Do not use any other completion format
 

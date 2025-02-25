@@ -66,7 +66,7 @@ workflow.add_conditional_edges(
 # Compile the graph
 app = workflow.compile()
 
-def run_workflow(images: list[Img], messages: list[str]) -> Dict:
+def run_workflow(images: dict[str, Img], messages: list[str]) -> Dict:
     """
     Run the workflow with initial messages
     """
@@ -78,9 +78,9 @@ def run_workflow(images: list[Img], messages: list[str]) -> Dict:
             "current_step": "plan",
             "tool_output": None,
             "tools_output": None,
-            "canvas": Canvas(images),
+            "canvas": Canvas({}, images, None),
             "plan": None,
-            "current_step_index": 0
+            "current_step_index": 0,
         }
         result = app.invoke(initial_state, config={"recursion_limit": 100})
     except Exception as e:
@@ -103,6 +103,7 @@ def main():
             image_id = file.split(".")[0]
             images[image_id] = convert_png_to_img(f"img/{file}")
     messages = []
+    print(images.keys())
     run_workflow(images, messages)
 
 

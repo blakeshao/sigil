@@ -3,15 +3,17 @@ import numpy as np
 from schema import Img 
 from constants import IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_BACKGROUND_COLOR
 from utils import convert_png_to_img
+import uuid
 
 
 class Canvas:
-    def __init__(self, images: dict[str, Img]):
+    def __init__(self, layers: dict[str, Img], images: dict[str, Img], current_layer_id: str | None):
         # Change to RGBA mode to support transparency
         self.canvas = Image.new("RGBA", (IMAGE_WIDTH, IMAGE_HEIGHT), IMAGE_BACKGROUND_COLOR)
-        self.layers = {}  # Dictionary to store layers
-        self.layer_counter = 0
+        self.layers = layers  # Dictionary to store layers
         self.images = images
+        self.current_layer_id = current_layer_id
+
     def add_layer(self, img_id: str, x: int, y: int) -> int:
         """Add an image as a new layer to the canvas at the specified coordinates.
         
@@ -28,8 +30,7 @@ class Canvas:
         if image.mode != 'RGBA':
             image = image.convert('RGBA')
             
-        self.layer_counter += 1
-        layer_id = self.layer_counter
+        layer_id = str(uuid.uuid4())
         
         # Store the layer info
         self.layers[layer_id] = {
@@ -39,9 +40,10 @@ class Canvas:
         
         # Composite all layers
         self._update_canvas()
+        self.current_layer_id = layer_id
         return layer_id
 
-    def move_layer(self, layer_id: int, x: int, y: int):
+    def move_layer(self, layer_id: str, x: int, y: int):
         """Move a specific layer to a new position.
         
         Args:
@@ -53,7 +55,7 @@ class Canvas:
             self.layers[layer_id]['position'] = (x, y)
             self._update_canvas()
 
-    def scale_layer(self, layer_id: int, scale_x: float, scale_y: float):
+    def scale_layer(self, layer_id: str, scale_x: float, scale_y: float):
         """Scale a specific layer.
         
         Args:
@@ -69,7 +71,7 @@ class Canvas:
             self.layers[layer_id]['image'] = scaled
             self._update_canvas()
 
-    def rotate_layer(self, layer_id: int, angle: float):
+    def rotate_layer(self, layer_id: str, angle: float):
         """Rotate a specific layer.
         
         Args:
@@ -82,7 +84,7 @@ class Canvas:
             self.layers[layer_id]['image'] = rotated
             self._update_canvas()
 
-    def delete_layer(self, layer_id: int):
+    def delete_layer(self, layer_id: str):
         """Delete a specific layer.
         
         Args:
@@ -120,13 +122,12 @@ def main():
         "1": image
     }
     
-    canvas = Canvas(images)
-    canvas.add_layer("1", 0, 0)
-    canvas.move_layer(1, 200, 200)
-    canvas.add_layer("1", 0, 0)
-    canvas.scale_layer(1, 0.5, 0.5)
-    canvas.rotate_layer(1, 45)
-    canvas.rotate_layer(2, 45)    # canvas.inspect_canvas()
+    canvas = Canvas(images, {}, None)
+    id_1 = canvas.add_layer("1", 0, 0)
+    canvas.move_layer(id_1, 200, 200)
+    id_2 = canvas.add_layer("1", 0, 0)
+    canvas.scale_layer(id_2, 0.5, 0.5)
+    canvas.rotate_layer(id_2, 45)
     canvas.canvas.show()
 
 if __name__ == "__main__":
