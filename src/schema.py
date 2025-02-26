@@ -1,11 +1,11 @@
 from pydantic import BaseModel
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from PIL import Image
 
 
 class Step(BaseModel):
     step: str
-    image_id: str
+    image_id: Optional[str] = None
 
 class Plan(BaseModel):
     theme: str

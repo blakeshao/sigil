@@ -21,6 +21,11 @@ def run_planning(state):
     messages = [{
         "role": "system",
         "content": PLANNING_PROMPT
+    }, {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "The command is in the previous messages: " + str(state["messages"])}
+        ]
     }]
     
     # Add images to messages
@@ -52,13 +57,15 @@ def run_planning(state):
     try:
         # Clean the response - remove any potential markdown or extra text
         content = response.content.strip()
-        if content.startswith("```json"):
-            content = content.split("```json")[1]
-        if content.endswith("```"):
-            content = content.rsplit("```", 1)[0]
-            
+        
+      
+        start = content.find("{")
+        end = content.rfind("}") + 1
+        if start != -1 and end != 0:
+            content = content[start:end]
+        
         # Parse the JSON response
-        plan_data = json.loads(content.strip())
+        plan_data = json.loads(content)
         
         # Create Plan object with proper Step objects
         steps = [Step(step=s["step"], image_id=s["image_id"]) for s in plan_data["plan"]]
@@ -67,6 +74,11 @@ def run_planning(state):
         
     except json.JSONDecodeError as e:
         print("Failed to parse response:", content)
+        # For debugging, print the problematic character
+        if isinstance(e, json.JSONDecodeError):
+            pos = e.pos
+            print(f"Error at position {pos}")
+            print(f"Characters around error: {content[max(0, pos-10):min(len(content), pos+10)]}")
         raise ValueError(f"Failed to parse agent response as JSON: {e}")
         
     return state

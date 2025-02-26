@@ -2,9 +2,11 @@ from PIL import Image
 import numpy as np
 from schema import Img 
 from constants import IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_BACKGROUND_COLOR
-from utils import convert_png_to_img
+from img_utils import convert_png_to_img
 import uuid
-
+from PIL import ImageDraw, ImageFont
+import io
+import base64
 
 class Canvas:
     def __init__(self, layers: dict[str, Img], images: dict[str, Img], current_layer_id: str | None):
@@ -13,14 +15,15 @@ class Canvas:
         self.layers = layers  # Dictionary to store layers
         self.images = images
         self.current_layer_id = current_layer_id
+        self.canvas_base64 = self.inspect_canvas()
 
-    def add_layer(self, img_id: str, x: int, y: int) -> int:
+    def add_layer(self, img_id: str, x: int | float, y: int | float) -> int:
         """Add an image as a new layer to the canvas at the specified coordinates.
         
         Args:
             img_id: id of the image to add to the canvas
-            x: x-coordinate for placement
-            y: y-coordinate for placement
+            x: x-coordinate for placement (can be int or float, if float is between 0-1 it's treated as percentage)
+            y: y-coordinate for placement (can be int or float, if float is between 0-1 it's treated as percentage)
             
         Returns:
             layer_id: Unique identifier for the added layer
@@ -29,6 +32,16 @@ class Canvas:
         image = self.images[img_id].image
         if image.mode != 'RGBA':
             image = image.convert('RGBA')
+            
+        # Handle percentage-based positioning (if x or y is a float between 0 and 1)
+        if isinstance(x, float) and 0 <= x <= 1:
+            x = int(x * IMAGE_WIDTH)
+        if isinstance(y, float) and 0 <= y <= 1:
+            y = int(y * IMAGE_HEIGHT)
+            
+        # Ensure coordinates are integers
+        x = int(x)
+        y = int(y)
             
         layer_id = str(uuid.uuid4())
         
@@ -43,7 +56,7 @@ class Canvas:
         self.current_layer_id = layer_id
         return layer_id
 
-    def move_layer(self, layer_id: str, x: int, y: int):
+    def move_layer(self, layer_id: str, x: int | float, y: int | float):
         """Move a specific layer to a new position.
         
         Args:
@@ -52,6 +65,10 @@ class Canvas:
             y: new y-coordinate
         """
         if layer_id in self.layers:
+            if isinstance(x, float) and 0 <= x <= 1:
+                x = int(x * IMAGE_WIDTH)
+            if isinstance(y, float) and 0 <= y <= 1:
+                y = int(y * IMAGE_HEIGHT)
             self.layers[layer_id]['position'] = (x, y)
             self._update_canvas()
 
@@ -94,12 +111,43 @@ class Canvas:
             del self.layers[layer_id]
             self._update_canvas()
 
+    def add_text(self, text: str, x: int, y: int, font_size: int = 16, color: str = "black"):
+        """Add text to the canvas at the specified coordinates.
+        
+        Args:
+            text: The text to add
+            x: The x-coordinate for placement
+            y: The y-coordinate for placement
+            font_size: The size of the font
+            color: The color of the text
+        """
 
-    def inspect_canvas(self) -> Image.Image:
-        """Inspect the current canvas."""
-        return self.canvas
+        font = ImageFont.truetype("fonts/SF-Pro.ttf", font_size)
+        text_layer = Image.new('RGBA', (IMAGE_WIDTH, IMAGE_HEIGHT), (0,0,0,0))
+        draw = ImageDraw.Draw(text_layer)
+        draw.text((x, y), text, fill=color, font=font)
+        
+        # Add the text layer to layers with a unique ID
+        layer_id = f"text_{len(self.layers)}"
+        self.layers[layer_id] = {
+            'image': text_layer,
+            'position': (0, 0)
+        }
+        self.current_layer_id = layer_id
+        self._update_canvas()
 
-  
+    def inspect_canvas(self) -> str:
+        """Inspect the current canvas and return base64 encoded image.
+        
+        Returns:
+            str: Base64 encoded PNG image of the current canvas
+        """
+        buffer = io.BytesIO()
+        self.canvas.save(buffer, format="PNG")
+        img_str = base64.b64encode(buffer.getvalue()).decode()
+        self.canvas_base64 = img_str
+        return img_str
+        
 
     def _update_canvas(self):
         """Internal method to update the canvas by compositing all layers."""
@@ -110,6 +158,9 @@ class Canvas:
         for layer_id in sorted(self.layers.keys()):
             layer = self.layers[layer_id]
             self.canvas.paste(layer['image'], layer['position'], layer['image'])
+
+
+
 
   
 

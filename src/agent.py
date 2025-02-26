@@ -8,18 +8,18 @@ from schema import Plan, Img
 from planning import run_planning
 from execute import run_execute
 from end_condition import determine_end_condition
-from utils import convert_png_to_img
+from img_utils import convert_png_to_img
 import os
+from datetime import datetime
+
 # Define the state schema
 class AgentState(TypedDict):
     images: dict[str, Img]
     messages: list[str]
-    current_step: str
-    tool_output: str | None
-    tools_output: List[Dict] | None
     canvas: Canvas | None
     plan: Plan | None
     current_step_index: int
+    
 
 
 
@@ -75,9 +75,6 @@ def run_workflow(images: dict[str, Img], messages: list[str]) -> Dict:
         initial_state = {
             "images": images,
             "messages": messages,
-            "current_step": "plan",
-            "tool_output": None,
-            "tools_output": None,
             "canvas": Canvas({}, images, None),
             "plan": None,
             "current_step_index": 0,
@@ -88,12 +85,12 @@ def run_workflow(images: dict[str, Img], messages: list[str]) -> Dict:
         # Create results directory if it doesn't exist
         os.makedirs("results", exist_ok=True)
         if result and result.get("canvas") is not None:  # Check if result exists and has canvas
-            result["canvas"].canvas.save("output_at_limit.png")
+            result["canvas"].canvas.save(f"results/output_at_limit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
         raise
         
     # Save the final canvas
     if result and result.get("canvas") is not None:  # Add safety check here too
-        result["canvas"].canvas.save("results/final_collage.png")
+        result["canvas"].canvas.save(f"results/{result['plan'].theme}{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
     return result
 
 def main():
@@ -102,7 +99,10 @@ def main():
         if file.endswith(".png"):
             image_id = file.split(".")[0]
             images[image_id] = convert_png_to_img(f"img/{file}")
-    messages = []
+    messages = [  
+        "Make a simplevalentine's day poster for notion the company"
+
+    ]
     print(images.keys())
     run_workflow(images, messages)
 
