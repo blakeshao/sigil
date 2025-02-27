@@ -29,4 +29,5 @@ class AgentState(TypedDict):
     canvas: any
     plan: Plan | None
     current_step_index: int
-    
+    reference_image: Img | None
+    reference_image_base64: str | None

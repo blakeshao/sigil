@@ -21,7 +21,23 @@ def run_planning(state):
         "content": [
             {"type": "text", "text": "The command is in the previous messages: " + str(state["messages"])}
         ]
-    }]
+    },
+    {
+        "role": "user",
+        "content": [
+            {
+                "type": "text",
+                "text": "Reference image:"
+            },
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/png;base64,{state['reference_image_base64']}"
+                }
+            }   
+        ]
+    }
+    ]
     
     # Add images to messages
     for image_id, image in state["images"].items():

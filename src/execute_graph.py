@@ -46,6 +46,8 @@ def call_model(state: AgentState, llm, tools):
                 "role": "assistant" if isinstance(msg, AIMessage) else "human",
                 "content": msg.content
             })
+
+    print(history_messages)
     canvas_messages = [
         {
             "type": "human",
@@ -62,6 +64,16 @@ def call_model(state: AgentState, llm, tools):
                 },
                 {
                     "type": "text",
+                    "text": "Reference image:"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{state['reference_image_base64']}"
+                    }
+                },
+                {
+                    "type": "text",
                     "text": f"Current design step: {state['plan'].steps[state['current_step_index']].step}\n"
                     f"Image asset ID: {state['plan'].steps[state['current_step_index']].image_id}\n"
                     f"Layer ID for editing: {state['canvas'].current_layer_id}\n"
@@ -72,6 +84,7 @@ def call_model(state: AgentState, llm, tools):
     ]
 
     messages = sys_message + history_messages + canvas_messages
+
     
     enc = tiktoken.encoding_for_model("gpt-4o")
     print(f"Token length of messages: {len(enc.encode(str(messages)))}")
@@ -144,9 +157,12 @@ def run_execute(state: AgentState) -> Dict:
     try:
         result = app.invoke(state, config={"recursion_limit": 5})
     except Exception as e:
+        state["current_step_index"] += 1
         return state
 
     state["current_step_index"] += 1
+
+    
 
     return state
         

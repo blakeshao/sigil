@@ -11,7 +11,7 @@ from langchain.tools import tool
 class Canvas:
     def __init__(self, layers: dict[str, Img], images: dict[str, Img], current_layer_id: str | None):
         # Change to RGBA mode to support transparency
-        self.canvas = Image.new("RGBA", (IMAGE_WIDTH, IMAGE_HEIGHT), IMAGE_BACKGROUND_COLOR)
+        self.canvas = Image.new("RGBA", (IMAGE_WIDTH, IMAGE_HEIGHT), (0,0,0,0))
         self.layers = layers  # Dictionary to store layers
         self.images = images
         self.current_layer_id = current_layer_id
@@ -138,6 +138,74 @@ class Canvas:
         }
         self.current_layer_id = layer_id
         self._update_canvas()
+
+    def modify_text_color(self, layer_id: str, new_color: str):
+        """Modify the color of a text layer.
+        
+        Args:
+            layer_id: ID of the text layer to modify
+            new_color: New color for the text (e.g. "red", "#FF0000")
+        """
+        print(f"Modifying text color of layer {layer_id} to {new_color}")
+        if layer_id in self.layers and layer_id.startswith("text_"):
+            # Get current text layer properties
+            text_layer = self.layers[layer_id]['image']
+            
+            # Create new transparent layer
+            new_text_layer = Image.new('RGBA', (IMAGE_WIDTH, IMAGE_HEIGHT), (0,0,0,0))
+            
+            # Get text content and position from original
+            text_bbox = text_layer.getbbox()
+            if text_bbox:
+                text_content = ImageDraw.Draw(text_layer)._text[0][1]  # Access internal text content
+                x, y = text_bbox[0], text_bbox[1]  # Use bounding box for position
+                
+                # Get current font size from image size
+                font_size = text_bbox[3] - text_bbox[1]  # Approximate from height
+                font = ImageFont.truetype("fonts/SF-Pro.ttf", font_size)
+                
+                # Draw text with new color
+                draw = ImageDraw.Draw(new_text_layer)
+                draw.text((x, y), text_content, fill=new_color, font=font)
+                
+                # Update layer
+                self.layers[layer_id]['image'] = new_text_layer
+                self._update_canvas()
+
+    def modify_text_size(self, layer_id: str, new_size: int):
+        """Modify the font size of a text layer.
+        
+        Args:
+            layer_id: ID of the text layer to modify
+            new_size: New font size in pixels
+        """
+        print(f"Modifying text size of layer {layer_id} to {new_size}")
+        if layer_id in self.layers and layer_id.startswith("text_"):
+            # Get current text layer properties
+            text_layer = self.layers[layer_id]['image']
+            
+            # Create new transparent layer
+            new_text_layer = Image.new('RGBA', (IMAGE_WIDTH, IMAGE_HEIGHT), (0,0,0,0))
+            
+            # Get text content and position from original
+            text_bbox = text_layer.getbbox()
+            if text_bbox:
+                text_content = ImageDraw.Draw(text_layer)._text[0][1]  # Access internal text content
+                x, y = text_bbox[0], text_bbox[1]  # Use bounding box for position
+                
+                # Get current color
+                color = ImageDraw.Draw(text_layer)._text[0][2]  # Access internal color
+                
+                # Create new font with new size
+                font = ImageFont.truetype("fonts/SF-Pro.ttf", new_size)
+                
+                # Draw text with new size
+                draw = ImageDraw.Draw(new_text_layer)
+                draw.text((x, y), text_content, fill=color, font=font)
+                
+                # Update layer
+                self.layers[layer_id]['image'] = new_text_layer
+                self._update_canvas()
 
     def get_canvas_base64(self) -> str:
         """Inspect the current canvas and return base64 encoded image.

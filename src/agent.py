@@ -7,10 +7,10 @@ from PIL import Image
 from schema import Plan, Img
 from planning import run_planning
 from execute_graph import run_execute
-from img_utils import convert_png_to_img
+from img_utils import convert_png_to_img, convert_png_to_base64
 import os
 from datetime import datetime
-
+from pprint import pprint
 from langchain.schema import BaseMessage, HumanMessage
 from typing import Sequence
 from schema import AgentState
@@ -22,14 +22,14 @@ workflow = StateGraph(AgentState)
 
 def plan(state: AgentState) -> AgentState:
     # Example processing step
-    print("Planning...")
+    pprint("========= Planning...=========")
     state = run_planning(state)
     return state
 
 # Define nodes/steps that will be added to the graph
 def execute(state: AgentState) -> AgentState:
     # Example processing step
-    print("Executing...")
+    pprint("========= Executing step " + str(state["current_step_index"]) + "=========")
     state = run_execute(state)
     return state
 
@@ -72,6 +72,7 @@ def run_workflow(images: dict[str, Img], messages: list[str]) -> Dict:
             "canvas": Canvas({}, images, None),
             "plan": None,
             "current_step_index": 0,
+            "reference_image_base64": convert_png_to_base64("reference/ref.png")
         }
         result = app.invoke(initial_state, config={"recursion_limit": 100})
     except Exception as e:
@@ -94,7 +95,13 @@ def main():
             image_id = file.split(".")[0]
             images[image_id] = convert_png_to_img(f"img/{file}")
     messages = [  
-        HumanMessage(content="Make a simple valentine's day poster for notion the company")
+        HumanMessage(content=[
+            {
+                "type": "text",
+                "text": "Make a simple valentine's day poster for notion the company, use the image as a reference"
+            }   
+        ]
+    )
     ]
     print(images.keys())
     run_workflow(images, messages)
