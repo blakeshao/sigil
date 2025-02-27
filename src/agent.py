@@ -6,20 +6,14 @@ from agent_canvas import Canvas
 from PIL import Image
 from schema import Plan, Img
 from planning import run_planning
-from execute import run_execute
-from end_condition import determine_end_condition
+from execute_graph import run_execute
 from img_utils import convert_png_to_img
 import os
 from datetime import datetime
 
-# Define the state schema
-class AgentState(TypedDict):
-    images: dict[str, Img]
-    messages: list[str]
-    canvas: Canvas | None
-    plan: Plan | None
-    current_step_index: int
-    
+from langchain.schema import BaseMessage, HumanMessage
+from typing import Sequence
+from schema import AgentState
 
 
 
@@ -100,8 +94,7 @@ def main():
             image_id = file.split(".")[0]
             images[image_id] = convert_png_to_img(f"img/{file}")
     messages = [  
-        "Make a simplevalentine's day poster for notion the company"
-
+        HumanMessage(content="Make a simple valentine's day poster for notion the company")
     ]
     print(images.keys())
     run_workflow(images, messages)

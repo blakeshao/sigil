@@ -1,5 +1,4 @@
 from PIL import Image
-import numpy as np
 from schema import Img 
 from constants import IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_BACKGROUND_COLOR
 from img_utils import convert_png_to_img
@@ -7,6 +6,7 @@ import uuid
 from PIL import ImageDraw, ImageFont
 import io
 import base64
+from langchain.tools import tool
 
 class Canvas:
     def __init__(self, layers: dict[str, Img], images: dict[str, Img], current_layer_id: str | None):
@@ -15,7 +15,6 @@ class Canvas:
         self.layers = layers  # Dictionary to store layers
         self.images = images
         self.current_layer_id = current_layer_id
-        self.canvas_base64 = self.inspect_canvas()
 
     def add_layer(self, img_id: str, x: int | float, y: int | float) -> int:
         """Add an image as a new layer to the canvas at the specified coordinates.
@@ -28,6 +27,7 @@ class Canvas:
         Returns:
             layer_id: Unique identifier for the added layer
         """
+        print(f"Adding layer {img_id} at {x}, {y}")
         # Convert image to RGBA if it isn't already
         image = self.images[img_id].image
         if image.mode != 'RGBA':
@@ -64,6 +64,7 @@ class Canvas:
             x: new x-coordinate
             y: new y-coordinate
         """
+        print(f"Moving layer {layer_id} to {x}, {y}")
         if layer_id in self.layers:
             if isinstance(x, float) and 0 <= x <= 1:
                 x = int(x * IMAGE_WIDTH)
@@ -72,18 +73,18 @@ class Canvas:
             self.layers[layer_id]['position'] = (x, y)
             self._update_canvas()
 
-    def scale_layer(self, layer_id: str, scale_x: float, scale_y: float):
+    def scale_layer(self, layer_id: str, scale: float):
         """Scale a specific layer.
         
         Args:
             layer_id: ID of the layer to scale
-            scale_x: horizontal scale factor (1.0 = original size)
-            scale_y: vertical scale factor (1.0 = original size)
+            scale: scale factor (1.0 = original size)
         """
+        print(f"Scaling layer {layer_id} to {scale}")
         if layer_id in self.layers:
             original = self.layers[layer_id]['image']
-            new_width = int(original.width * scale_x)
-            new_height = int(original.height * scale_y)
+            new_width = int(original.width * scale)
+            new_height = int(original.height * scale)
             scaled = original.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.layers[layer_id]['image'] = scaled
             self._update_canvas()
@@ -95,6 +96,7 @@ class Canvas:
             layer_id: ID of the layer to rotate
             angle: Angle in degrees to rotate the layer 
         """
+        print(f"Rotating layer {layer_id} to {angle}")
         if layer_id in self.layers:
             original = self.layers[layer_id]['image']
             rotated = original.rotate(angle, expand=True)
@@ -107,6 +109,7 @@ class Canvas:
         Args:
             layer_id: ID of the layer to delete
         """
+        print(f"Deleting layer {layer_id}")
         if layer_id in self.layers:
             del self.layers[layer_id]
             self._update_canvas()
@@ -121,7 +124,7 @@ class Canvas:
             font_size: The size of the font
             color: The color of the text
         """
-
+        print(f"Adding text {text} at {x}, {y}")
         font = ImageFont.truetype("fonts/SF-Pro.ttf", font_size)
         text_layer = Image.new('RGBA', (IMAGE_WIDTH, IMAGE_HEIGHT), (0,0,0,0))
         draw = ImageDraw.Draw(text_layer)
@@ -136,7 +139,7 @@ class Canvas:
         self.current_layer_id = layer_id
         self._update_canvas()
 
-    def inspect_canvas(self) -> str:
+    def get_canvas_base64(self) -> str:
         """Inspect the current canvas and return base64 encoded image.
         
         Returns:
@@ -145,7 +148,7 @@ class Canvas:
         buffer = io.BytesIO()
         self.canvas.save(buffer, format="PNG")
         img_str = base64.b64encode(buffer.getvalue()).decode()
-        self.canvas_base64 = img_str
+
         return img_str
         
 
@@ -160,6 +163,11 @@ class Canvas:
             self.canvas.paste(layer['image'], layer['position'], layer['image'])
 
 
+   
+
+   
+
+    
 
 
   
