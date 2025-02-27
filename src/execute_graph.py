@@ -142,13 +142,9 @@ def run_execute(state: AgentState) -> Dict:
     app = graph(state)
     result = None
     try:
-        result = app.invoke(state, config={"recursion_limit": 100})
+        result = app.invoke(state, config={"recursion_limit": 5})
     except Exception as e:
-        print(f"Error: {e}")
-        os.makedirs("results", exist_ok=True)
-        if result and result.get("canvas") is not None:
-            result["canvas"].canvas.save(f"results/output_at_limit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
-        raise
+        return state
 
     state["current_step_index"] += 1
 

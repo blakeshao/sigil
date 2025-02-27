@@ -54,7 +54,7 @@ class Canvas:
         # Composite all layers
         self._update_canvas()
         self.current_layer_id = layer_id
-        return layer_id
+        return "layer_id: " + layer_id
 
     def move_layer(self, layer_id: str, x: int | float, y: int | float):
         """Move a specific layer to a new position.
