@@ -231,15 +231,6 @@ class Canvas:
             self.canvas.paste(layer['image'], layer['position'], layer['image'])
 
 
-   
-
-   
-
-    
-
-
-  
-
 def main():
     # Open the image
     image = convert_png_to_img("img/1.png")
