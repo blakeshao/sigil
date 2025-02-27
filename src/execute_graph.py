@@ -21,7 +21,8 @@ from langchain.schema import BaseMessage
 from langchain.schema.runnable.config import RunnableConfig
 from typing import Annotated
 from langgraph.graph import add_messages
-from langchain.schema import HumanMessage
+from langchain.schema import AIMessage
+import tiktoken
 
 
 def should_continue(state: AgentState):
@@ -32,40 +33,52 @@ def should_continue(state: AgentState):
     return "tools"
 
 def call_model(state: AgentState, llm, tools):
-    # Convert the dictionary message to a HumanMessage object
-    canvas_message = HumanMessage(content=[
+    sys_message = [
         {
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/png;base64,{state['canvas'].get_canvas_base64()}"
-            }
+            "type": "system",
+            "content": EXECUTION_PROMPT
         },
+    ]
+    history_messages = []
+    for msg in state["messages"]:
+        if hasattr(msg, "content") and not isinstance(msg.content, list):
+            history_messages.append({
+                "role": "assistant" if isinstance(msg, AIMessage) else "human",
+                "content": msg.content
+            })
+    canvas_messages = [
         {
-            "type": "text",
-            "text": "Above is the current state of the canvas"
-        },
-        {
-            "type": "text",
-            "text": f"Current design step: {state['plan'].steps[state['current_step_index']].step}"
-        },
-        {
-            "type": "text",
-            "text": f"Image asset ID: {state['plan'].steps[state['current_step_index']].image_id}"
-        },
-        {
-            "type": "text",
-            "text": f"Layer ID for editing: {state['canvas'].current_layer_id}"
-        },
-        {
-            "type": "text",
-            "text": f"Available tools: {tools}"
+            "type": "human",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Current canvas state:"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{state['canvas'].get_canvas_base64()}"
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": f"Current design step: {state['plan'].steps[state['current_step_index']].step}\n"
+                    f"Image asset ID: {state['plan'].steps[state['current_step_index']].image_id}\n"
+                    f"Layer ID for editing: {state['canvas'].current_layer_id}\n"
+                    f"Available tools: {[tool.name for tool in tools]}"
+                }
+            ]
         }
-    ])
+    ]
 
-    response = llm.invoke({"messages": [canvas_message]})
-    messages_to_add = [response]
+    messages = sys_message + history_messages + canvas_messages
     
-    return {"messages": messages_to_add}
+    enc = tiktoken.encoding_for_model("gpt-4o")
+    print(f"Token length of messages: {len(enc.encode(str(messages)))}")
+
+    response = llm.invoke(messages)
+    print(response.content)
+    return {"messages": [response]}
 
 def create_agent_node(llm, tools):
     """Create an agent node that uses the provided agent"""
@@ -76,50 +89,41 @@ def create_agent_node(llm, tools):
 def graph(state: AgentState):
     workflow = StateGraph(AgentState)
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.0)  # Fixed model name
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.0)  # Changed to vision model
     tools = [
         Tool(
             name="add_layer",
-            func=lambda input_str: state["canvas"].add_layer(**json.loads(input_str)),
+            func=lambda input_str: state["canvas"].add_layer(**json.loads(input_str) if isinstance(input_str, str) else input_str),
             description="Add an image layer to the canvas. Input should be JSON string with: {\"img_id\": \"string\", \"x\": number, \"y\": number}"
         ),  
         Tool(
             name="move_layer",
-            func=lambda input_str: state["canvas"].move_layer(**json.loads(input_str)),
+            func=lambda input_str: state["canvas"].move_layer(**json.loads(input_str) if isinstance(input_str, str) else input_str),
             description="Move a layer on the canvas. Input should be JSON string with: {\"layer_id\": \"string\", \"x\": number, \"y\": number}"
         ),
         Tool(
             name="scale_layer",
-            func=lambda input_str: state["canvas"].scale_layer(**json.loads(input_str)),
+            func=lambda input_str: state["canvas"].scale_layer(**json.loads(input_str) if isinstance(input_str, str) else input_str),
             description="Scale a layer. Input should be JSON string with: {\"layer_id\": \"string\", \"scale\": number}"
         ),
         Tool(
             name="rotate_layer",
-            func=lambda input_str: state["canvas"].rotate_layer(**json.loads(input_str)),
+            func=lambda input_str: state["canvas"].rotate_layer(**json.loads(input_str) if isinstance(input_str, str) else input_str),
             description="Rotate a layer. Input should be JSON string with: {\"layer_id\": \"string\", \"angle\": number}"
         ),
         Tool(
             name="add_text",
-            func=lambda input_str: state["canvas"].add_text(**json.loads(input_str)),
+            func=lambda input_str: state["canvas"].add_text(**json.loads(input_str) if isinstance(input_str, str) else input_str),
             description="Add text to the canvas. Input should be JSON string with: {\"text\": \"string\", \"x\": number, \"y\": number, \"color\": \"string\", \"font_size\": number}"
         )
     ]
     
-    # Create the prompt template with a messages parameter
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", EXECUTION_PROMPT),
-        ("human", "{messages}")  # Add this line to handle the messages input
-    ])
-    
-    agent = (
-        prompt
-        | llm.bind_tools(tools)
-    )
+    llm_with_tools = llm.bind_tools(tools)
 
     tool_node = ToolNode(tools=tools)
 
     # Define the two nodes we will cycle between
-    workflow.add_node("agent", create_agent_node(agent, tools))
+    workflow.add_node("agent", create_agent_node(llm_with_tools, tools))
     workflow.add_node("tools", tool_node)
 
     workflow.add_edge(START, "agent")
